@@ -9,6 +9,8 @@ import {
 } from '../types'
 import * as cuid from 'cuid'
 import * as fs from 'fs'
+import * as os from 'os'
+import * as path from 'path'
 import {
   nodeExists,
   wait,
@@ -24,7 +26,9 @@ import {
   scrollToElement,
   setHtml,
   press,
+  setViewport,
   clearCookies,
+  deleteCookie,
   getCookies,
   setCookies,
   getAllCookies,
@@ -32,6 +36,8 @@ import {
   mousedown,
   mouseup,
   focus,
+  clearInput,
+  setFileInput,
 } from '../util'
 
 export default class LocalRuntime {
@@ -48,6 +54,8 @@ export default class LocalRuntime {
     switch (command.type) {
       case 'goto':
         return this.goto(command.url)
+      case 'setViewport':
+        return setViewport(this.client, command.options)
       case 'wait': {
         if (command.selector) {
           return this.waitSelector(command.selector, command.timeout)
@@ -57,6 +65,8 @@ export default class LocalRuntime {
           throw new Error('waitFn not yet implemented')
         }
       }
+      case 'clearCache':
+        return this.clearCache()
       case 'setUserAgent':
         return this.setUserAgent(command.useragent)
       case 'click':
@@ -81,22 +91,28 @@ export default class LocalRuntime {
         return this.scrollTo(command.x, command.y)
       case 'scrollToElement':
         return this.scrollToElement(command.selector)
+      case 'deleteCookies':
+        return this.deleteCookies(command.name, command.url)
+      case 'clearCookies':
+        return this.clearCookies()
       case 'setHtml':
         return this.setHtml(command.html)
-      case 'cookiesClearAll':
-        return this.cookiesClearAll()
-      case 'cookiesGet':
-        return this.cookiesGet(command.nameOrQuery)
-      case 'cookiesGetAll':
-        return this.cookiesGetAll()
-      case 'cookiesSet':
-        return this.cookiesSet(command.nameOrCookies, command.value)
+      case 'cookies':
+        return this.cookies(command.nameOrQuery)
+      case 'allCookies':
+        return this.allCookies()
+      case 'setCookies':
+        return this.setCookies(command.nameOrCookies, command.value)
       case 'mousedown':
         return this.mousedown(command.selector)
       case 'mouseup':
         return this.mousup(command.selector)
       case 'focus':
         return this.focus(command.selector)
+      case 'clearInput':
+        return this.clearInput(command.selector)
+      case 'setFileInput':
+        return this.setFileInput(command.selector, command.files)
       default:
         throw new Error(`No such command: ${JSON.stringify(command)}`)
     }
@@ -110,6 +126,17 @@ export default class LocalRuntime {
     await Page.navigate({ url })
     await Page.loadEventFired()
     this.log(`Navigated to ${url}`)
+  }
+
+  private async clearCache(): Promise<void> {
+    const { Network } = this.client
+    const canClearCache = await Network.canClearBrowserCache
+    if (canClearCache) {
+      await Network.clearBrowserCache()
+      this.log(`Cache is cleared`)
+    } else {
+      this.log(`Cache could not be cleared`)
+    }
   }
 
   private async setUserAgent(useragent: string): Promise<void> {
@@ -259,15 +286,15 @@ export default class LocalRuntime {
     this.log(`Typed ${text} in ${selector}`)
   }
 
-  async cookiesGet(nameOrQuery?: string | CookieQuery): Promise<Cookie[]> {
+  async cookies(nameOrQuery?: string | CookieQuery): Promise<Cookie[]> {
     return await getCookies(this.client, nameOrQuery as string | undefined)
   }
 
-  async cookiesGetAll(): Promise<Cookie[]> {
+  async allCookies(): Promise<Cookie[]> {
     return await getAllCookies(this.client)
   }
 
-  async cookiesSet(
+  async setCookies(
     nameOrCookies: string | Cookie | Cookie[],
     value?: string,
   ): Promise<void> {
@@ -289,12 +316,29 @@ export default class LocalRuntime {
       return await setCookies(this.client, [cookie])
     }
 
-    throw new Error(`cookiesSet(): Invalid input ${nameOrCookies}, ${value}`)
+    throw new Error(`setCookies(): Invalid input ${nameOrCookies}, ${value}`)
   }
 
-  async cookiesClearAll(): Promise<void> {
-    await clearCookies(this.client)
-    this.log('Cookies cleared')
+  async deleteCookies(name: string, url: string): Promise<void> {
+    const { Network } = this.client
+    const canClearCookies = await Network.canClearBrowserCookies()
+    if (canClearCookies) {
+      await deleteCookie(this.client, name, url)
+      this.log(`Cookie ${name} cleared`)
+    } else {
+      this.log(`Cookie ${name} could not be cleared`)
+    }
+  }
+
+  async clearCookies(): Promise<void> {
+    const { Network } = this.client
+    const canClearCookies = await Network.canClearBrowserCookies()
+    if (canClearCookies) {
+      await clearCookies(this.client)
+      this.log('Cookies cleared')
+    } else {
+      this.log('Cookies could not be cleared')
+    }
   }
 
   async press(keyCode: number, count?: number, modifiers?: any): Promise<void> {
@@ -337,8 +381,8 @@ export default class LocalRuntime {
 
       return `https://${process.env['CHROMELESS_S3_BUCKET_URL']}/${s3Path}`
     } else {
-      // write to `/tmp` instead
-      const filePath = `/tmp/${cuid()}.png`
+      // write to `${os.tmpdir()}` instead
+      const filePath = path.join(os.tmpdir(), `${cuid()}.png`)
       fs.writeFileSync(filePath, Buffer.from(data, 'base64'))
 
       return filePath
@@ -372,12 +416,55 @@ export default class LocalRuntime {
 
       return `https://${process.env['CHROMELESS_S3_BUCKET_URL']}/${s3Path}`
     } else {
-      // write to `/tmp` instead
-      const filePath = `/tmp/${cuid()}.pdf`
+      // write to `${os.tmpdir()}` instead
+      const filePath = path.join(os.tmpdir(), `${cuid()}.pdf`)
       fs.writeFileSync(filePath, Buffer.from(data, 'base64'))
 
       return filePath
     }
+  }
+
+  async clearInput(selector: string): Promise<void> {
+    if (selector) {
+      if (this.chromelessOptions.implicitWait) {
+        this.log(`clearInput(): Waiting for ${selector}`)
+        await waitForNode(
+          this.client,
+          selector,
+          this.chromelessOptions.waitTimeout,
+        )
+      }
+
+      const exists = await nodeExists(this.client, selector)
+      if (!exists) {
+        throw new Error(
+          `clearInput(): Node not found for selector: ${selector}`,
+        )
+      }
+    }
+    await clearInput(this.client, selector)
+    this.log(`${selector} cleared`)
+  }
+
+  async setFileInput(selector: string, files: string[]): Promise<void> {
+    if (this.chromelessOptions.implicitWait) {
+      this.log(`setFileInput(): Waiting for ${selector}`)
+      await waitForNode(
+        this.client,
+        selector,
+        this.chromelessOptions.waitTimeout,
+      )
+    }
+
+    const exists = await nodeExists(this.client, selector)
+    if (!exists) {
+      throw new Error(
+        `setFileInput(): node for selector ${selector} doesn't exist`,
+      )
+    }
+
+    await setFileInput(this.client, selector, files)
+    this.log(`setFileInput() files ${files}`)
   }
 
   private log(msg: string): void {

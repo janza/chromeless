@@ -143,6 +143,7 @@ const chromeless = new Chromeless({
 - [`wait(timeout: number)`](docs/api.md#api-wait-timeout)
 - [`wait(selector: string)`](docs/api.md#api-wait-selector)
 - [`wait(fn: (...args: any[]) => boolean, ...args: any[])`] - Not implemented yet
+- [`clearCache()`](docs/api.md#api-clearcache)
 - [`focus(selector: string)`](docs/api.md#api-focus)
 - [`press(keyCode: number, count?: number, modifiers?: any)`](docs/api.md#api-press)
 - [`type(input: string, selector?: string)`](docs/api.md#api-type)
@@ -152,24 +153,26 @@ const chromeless = new Chromeless({
 - [`mousedown(selector: string)`](docs/api.md#api-mousedown)
 - [`mouseup(selector: string)`](docs/api.md#api-mouseup)
 - [`scrollTo(x: number, y: number)`](docs/api.md#api-scrollto)
-- [`scrollToElement(selector: string)`](docs/api.md#api-scrollto)
+- [`scrollToElement(selector: string)`](docs/api.md#api-scrolltoelement)
 - [`setHtml(html: string)`](docs/api.md#api-sethtml)
-- [`viewport(width: number, height: number)`](docs/api.md#api-viewport)
+- [`setViewport(options: DeviceMetrics)`](docs/api.md#api-setviewport)
 - [`evaluate<U extends any>(fn: (...args: any[]) => void, ...args: any[])`](docs/api.md#api-evaluate)
 - [`inputValue(selector: string)`](docs/api.md#api-inputvalue)
 - [`exists(selector: string)`](docs/api.md#api-exists)
 - [`screenshot()`](docs/api.md#api-screenshot)
 - [`pdf(options?: PdfOptions)`](docs/api.md#api-pdf)
 - [`html()`](docs/api.md#api-html)
-- [`cookiesGet()`](docs/api.md#api-cookiesget)
-- [`cookiesGet(name: string)`](docs/api.md#api-cookiesget-name)
-- [`cookiesGet(query: CookieQuery)`](docs/api.md#api-cookiesget-query) - Not implemented yet
-- [`cookiesGetAll()`](docs/api.md#api-cookiesgetall)
-- [`cookiesSet(name: string, value: string)`](docs/api.md#api-cookiesset)
-- [`cookiesSet(cookie: Cookie)`](docs/api.md#api-cookiesset-one)
-- [`cookiesSet(cookies: Cookie[])`](docs/api.md#api-cookiesset-many)
-- [`cookiesClear(name: string)`](docs/api.md#api-cookiesclear)
-- [`cookiesClearAll()`](docs/api.md#api-cookiesclearall)
+- [`cookies()`](docs/api.md#api-cookies)
+- [`cookies(name: string)`](docs/api.md#api-cookies-name)
+- [`cookies(query: CookieQuery)`](docs/api.md#api-cookies-query) - Not implemented yet
+- [`allCookies()`](docs/api.md#api-all-cookies)
+- [`setCookies(name: string, value: string)`](docs/api.md#api-setcookies)
+- [`setCookies(cookie: Cookie)`](docs/api.md#api-setcookies-one)
+- [`setCookies(cookies: Cookie[])`](docs/api.md#api-setcookies-many)
+- [`deleteCookies(name: string)`](docs/api.md#api-deletecookies)
+- [`clearCookies()`](docs/api.md#api-clearcookies)
+- [`clearInput(selector: string)`](docs/api.md#api-clearInput)
+- [`setFileInput(selector: string, files: string | string[])`](docs/api.md#api-set-file-input)
 
 ## Configuring Development Environment
 
@@ -220,7 +223,7 @@ In case you get an error like this when running the Chromeless client:
 ...
 Error: Unable to get presigned websocket URL and connect to it.
 ```
-Make sure that you're running at least version `1.8.0` of [`serverless`](https://github.com/serverless/serverless). It is a known [issue](https://github.com/serverless/serverless/issues/2450), that the API Keys are not working in older serverless versions. With running `npm run deploy` that shouldn't happen at all, as it uses the local installed version of `serverless`.
+Make sure that you're running at least version `1.19.0` of [`serverless`](https://github.com/serverless/serverless). It is a known [issue](https://github.com/serverless/serverless/issues/2450), that the API Gateway API keys are not setup correctly in older Serverless versions. Best is to run `npm run deploy` within the project as this will use the local installed version of `serverless`.
 
 ### Resource ServerlessDeploymentBucket does not exist for stack chromeless-serverless-dev
 In case the deployment of the serverless function returns an error like this:

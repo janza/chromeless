@@ -11,6 +11,20 @@ export interface Client {
   }
 }
 
+export interface DeviceMetrics {
+  width: number
+  height: number
+  deviceScaleFactor?: number
+  mobile?: boolean
+  scale?: number
+  screenOrientation?: ScreenOrientation
+}
+
+export interface ScreenOrientation {
+  type: string
+  angle: number
+}
+
 export interface RemoteOptions {
   endpointUrl: string
   apiKey?: string
@@ -47,6 +61,13 @@ export type Command =
   | {
       type: 'goto'
       url: string
+    }
+  | {
+      type: 'clearCache'
+    }
+  | {
+      type: 'setViewport'
+      options: DeviceMetrics
     }
   | {
       type: 'setUserAgent'
@@ -98,7 +119,7 @@ export type Command =
   | {
       type: 'scrollToElement'
       selector: string
-  }
+    }
   | {
       type: 'setHtml'
       html: string
@@ -115,18 +136,23 @@ export type Command =
       selector?: string
     }
   | {
-      type: 'cookiesClearAll'
+      type: 'clearCookies'
     }
   | {
-      type: 'cookiesSet'
+      type: 'deleteCookies'
+      name: string
+      url: string
+    }
+  | {
+      type: 'setCookies'
       nameOrCookies: string | Cookie | Cookie[]
       value?: string
     }
   | {
-      type: 'cookiesGetAll'
+      type: 'allCookies'
     }
   | {
-      type: 'cookiesGet'
+      type: 'cookies'
       nameOrQuery?: string | CookieQuery
     }
   | {
@@ -140,6 +166,15 @@ export type Command =
   | {
       type: 'focus'
       selector: string
+    }
+  | {
+      type: 'clearInput'
+      selector: string
+    }
+  | {
+      type: 'setFileInput'
+      selector: string
+      files: string[]
     }
 
 export interface Cookie {
